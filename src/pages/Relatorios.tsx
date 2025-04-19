@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, FileText, Clock, Download, ChevronDown } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { DateRange } from 'react-day-picker';
 
 // Função para agrupar registros por dia
 const groupRecordsByDay = (records: TimeRecord[]) => {
@@ -77,10 +78,7 @@ const Relatorios = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [date, setDate] = useState<Date>(new Date());
   const [reportType, setReportType] = useState<'monthly' | 'range'>('monthly');
-  const [dateRange, setDateRange] = useState<{
-    from: Date;
-    to: Date | undefined;
-  }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
@@ -120,8 +118,8 @@ const Relatorios = () => {
         startDate = startOfMonth(date);
         endDate = endOfMonth(date);
       } else {
-        startDate = dateRange.from;
-        endDate = dateRange.to || dateRange.from;
+        startDate = dateRange.from!;
+        endDate = dateRange.to || dateRange.from!;
       }
       
       // Se for gerente e tiver selecionado um usuário específico
@@ -316,6 +314,7 @@ const Relatorios = () => {
                       captionLayout="dropdown-buttons"
                       fromYear={2020}
                       toYear={2030}
+                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -352,6 +351,7 @@ const Relatorios = () => {
                       selected={dateRange}
                       onSelect={setDateRange}
                       numberOfMonths={2}
+                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
