@@ -36,13 +36,14 @@ export interface WorkSchedule {
 export interface UserSession {
   id: string;
   userId: string;
+  userEmail: string; // Adicionado para facilitar a recuperação
   deviceId: string;
   lastActive: Date;
   createdAt: Date;
 }
 
 const DB_NAME = 'pontoLocalDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Aumentamos a versão para atualizar o schema
 
 // Inicializar banco de dados
 export const initDB = (): Promise<IDBDatabase> => {
@@ -95,12 +96,16 @@ export const initDB = (): Promise<IDBDatabase> => {
         scheduleStore.createIndex('userAndWeekDay', ['userId', 'weekDay'], { unique: true });
       }
 
-      // Criar store para sessões
-      if (!db.objectStoreNames.contains('sessions')) {
-        const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
-        sessionStore.createIndex('userId', 'userId', { unique: false });
-        sessionStore.createIndex('deviceId', 'deviceId', { unique: true });
+      // Atualizar store de sessões
+      if (db.objectStoreNames.contains('sessions')) {
+        db.deleteObjectStore('sessions');
       }
+      
+      const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+      sessionStore.createIndex('userId', 'userId', { unique: false });
+      sessionStore.createIndex('deviceId', 'deviceId', { unique: false });
+      sessionStore.createIndex('userEmail', 'userEmail', { unique: false });
+      sessionStore.createIndex('lastActive', 'lastActive', { unique: false });
     };
   });
 };
@@ -283,21 +288,50 @@ export const deleteWorkSchedule = (id: string): Promise<void> => {
 };
 
 // Funções para gerenciar sessões
-export const createSession = async (userId: string): Promise<UserSession> => {
-  const session: UserSession = {
-    id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    userId,
-    deviceId: `${navigator.userAgent}-${Math.random().toString(36).substr(2, 9)}`,
-    lastActive: new Date(),
-    createdAt: new Date()
-  };
-
+export const createSession = async (session: UserSession): Promise<UserSession> => {
   return new Promise((resolve, reject) => {
     getStore('sessions', 'readwrite')
       .then(store => {
         const request = store.add(session);
         request.onsuccess = () => resolve(session);
         request.onerror = () => reject('Erro ao criar sessão');
+      })
+      .catch(error => reject(error));
+  });
+};
+
+export const getSession = (id: string): Promise<UserSession | null> => {
+  return new Promise((resolve, reject) => {
+    getStore('sessions')
+      .then(store => {
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject('Erro ao buscar sessão');
+      })
+      .catch(error => reject(error));
+  });
+};
+
+export const getAllSessions = (): Promise<UserSession[]> => {
+  return new Promise((resolve, reject) => {
+    getStore('sessions')
+      .then(store => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject('Erro ao listar sessões');
+      })
+      .catch(error => reject(error));
+  });
+};
+
+export const getUserSessions = (userId: string): Promise<UserSession[]> => {
+  return new Promise((resolve, reject) => {
+    getStore('sessions')
+      .then(store => {
+        const index = store.index('userId');
+        const request = index.getAll(userId);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject('Erro ao buscar sessões do usuário');
       })
       .catch(error => reject(error));
   });
@@ -314,6 +348,8 @@ export const updateSessionActivity = (sessionId: string): Promise<void> => {
             session.lastActive = new Date();
             store.put(session);
             resolve();
+          } else {
+            reject('Sessão não encontrada');
           }
         };
         request.onerror = () => reject('Erro ao atualizar sessão');
@@ -329,6 +365,50 @@ export const deleteSession = (sessionId: string): Promise<void> => {
         const request = store.delete(sessionId);
         request.onsuccess = () => resolve();
         request.onerror = () => reject('Erro ao deletar sessão');
+      })
+      .catch(error => reject(error));
+  });
+};
+
+export const removeInactiveSessions = (hoursInactive: number): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const cutoffTime = new Date();
+    cutoffTime.setHours(cutoffTime.getHours() - hoursInactive);
+    
+    getAllSessions()
+      .then(sessions => {
+        const inactiveSessions = sessions.filter(session => {
+          const lastActive = new Date(session.lastActive);
+          return lastActive < cutoffTime;
+        });
+        
+        if (inactiveSessions.length === 0) {
+          resolve();
+          return;
+        }
+        
+        let completed = 0;
+        let errors = 0;
+        
+        inactiveSessions.forEach(session => {
+          deleteSession(session.id)
+            .then(() => {
+              completed++;
+              if (completed + errors === inactiveSessions.length) {
+                resolve();
+              }
+            })
+            .catch(() => {
+              errors++;
+              if (completed + errors === inactiveSessions.length) {
+                if (errors === inactiveSessions.length) {
+                  reject('Erro ao remover sessões inativas');
+                } else {
+                  resolve();
+                }
+              }
+            });
+        });
       })
       .catch(error => reject(error));
   });

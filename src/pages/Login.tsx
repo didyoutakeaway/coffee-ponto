@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,10 +13,17 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  React.useEffect(() => {
+  // Redirecionar para o dashboard se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
     // Inicializar o banco de dados quando a página de login carregar
     initDB().catch(error => {
       console.error('Falha ao inicializar o banco de dados:', error);
@@ -32,6 +39,8 @@ const Login = () => {
       if (success) {
         navigate('/dashboard');
       }
+    } catch (error) {
+      console.error('Erro no processo de login:', error);
     } finally {
       setIsLoading(false);
     }
