@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
 import { initDB } from '@/services/db';
 import { Coffee } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -35,12 +36,23 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      // Log das credenciais para debugging (remova em produção)
+      console.log('Tentando login com:', { email, password });
+      
       const success = await login(email, password);
       if (success) {
         navigate('/dashboard');
+      } else {
+        // Mensagem de erro já é exibida pelo toast no auth-context
+        console.log('Login falhou');
       }
     } catch (error) {
       console.error('Erro no processo de login:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro no login",
+        description: "Ocorreu um erro ao tentar fazer login. Tente novamente.",
+      });
     } finally {
       setIsLoading(false);
     }
