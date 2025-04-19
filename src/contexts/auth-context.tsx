@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserSession, getUserByEmail, createSession, deleteSession, updateSessionActivity } from '../services/db';
+import { User, getUserByEmail } from '../services/db';
 import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextProps {
@@ -17,55 +17,32 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Recuperar sessão do sessionStorage
-    const storedSession = sessionStorage.getItem('currentSession');
-    if (storedSession) {
+    // Verificar se o usuário está logado (sessionStorage)
+    const storedUser = sessionStorage.getItem('currentUser');
+    if (storedUser) {
       try {
-        const parsedSession = JSON.parse(storedSession);
-        setSession(parsedSession);
-        const storedUser = sessionStorage.getItem('currentUser');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          // Atualizar atividade da sessão
-          updateSessionActivity(parsedSession.id).catch(console.error);
-        }
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
       } catch (error) {
-        console.error('Erro ao recuperar sessão:', error);
-        sessionStorage.removeItem('currentSession');
+        console.error('Erro ao recuperar usuário da sessão:', error);
         sessionStorage.removeItem('currentUser');
       }
     }
     setIsLoading(false);
   }, []);
 
-  // Atualizar atividade da sessão periodicamente
-  useEffect(() => {
-    if (session) {
-      const interval = setInterval(() => {
-        updateSessionActivity(session.id).catch(console.error);
-      }, 5 * 60 * 1000); // A cada 5 minutos
-      return () => clearInterval(interval);
-    }
-  }, [session]);
-
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const foundUser = await getUserByEmail(email);
       
       if (foundUser && foundUser.password === password) {
-        // Criar nova sessão
-        const newSession = await createSession(foundUser.id);
+        // Em produção, usar um método seguro de comparação de senhas
         setUser(foundUser);
-        setSession(newSession);
-        
         // Armazenar na sessão
         sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
-        sessionStorage.setItem('currentSession', JSON.stringify(newSession));
-        
         toast({
           title: "Login realizado com sucesso",
           description: `Bem-vindo(a), ${foundUser.name}!`,
@@ -90,18 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
-    if (session) {
-      try {
-        await deleteSession(session.id);
-      } catch (error) {
-        console.error('Erro ao encerrar sessão:', error);
-      }
-    }
+  const logout = () => {
     setUser(null);
-    setSession(null);
     sessionStorage.removeItem('currentUser');
-    sessionStorage.removeItem('currentSession');
     toast({
       title: "Logout realizado",
       description: "Você saiu do sistema com sucesso.",
