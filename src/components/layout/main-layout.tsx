@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { SidebarNav } from './sidebar-nav';
@@ -33,9 +33,10 @@ export function MainLayout() {
                 <Clock className="h-6 w-6 text-primary" />
                 <span className="text-lg font-bold">Ponto Local</span>
               </div>
-              {/* Fix: Removed asChild prop from SidebarTrigger */}
-              <SidebarTrigger>
-                <Menu className="h-5 w-5" />
+              <SidebarTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
               </SidebarTrigger>
             </div>
           </SidebarHeader>
