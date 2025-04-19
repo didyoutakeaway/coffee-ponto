@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
 import { initDB } from '@/services/db';
-import { Clock } from 'lucide-react';
+import { Coffee } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,16 +38,16 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-lg">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-2">
-              <Clock className="h-12 w-12 text-primary" />
-            </div>
-            <CardTitle className="text-2xl font-bold">Ponto Local</CardTitle>
-            <CardDescription>
-              Sistema de Registro de Ponto
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E6B980] to-[#EACDA3] p-4">
+      <div className="w-full max-w-md relative">
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-32 h-32 bg-white rounded-full shadow-xl flex items-center justify-center">
+          <Coffee className="h-16 w-16 text-[#8B4513]" />
+        </div>
+        <Card className="shadow-xl border-0 backdrop-blur-sm bg-white/90">
+          <CardHeader className="space-y-1 text-center pt-16">
+            <CardTitle className="text-3xl font-bold font-serif text-[#4A3220]">DiTassi</CardTitle>
+            <CardDescription className="text-[#8B4513] italic">
+              Sistema de Controle de Ponto
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -61,6 +61,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="border-[#8B4513]/20"
                 />
               </div>
               <div className="space-y-2">
@@ -73,16 +74,16 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="border-[#8B4513]/20"
                 />
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p>Usuário admin padrão:</p>
-                <p>Email: admin@pontolocal.com</p>
-                <p>Senha: admin123</p>
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-[#8B4513] hover:bg-[#6F3410] text-white" 
+                disabled={isLoading}
+              >
                 {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
             </CardFooter>
