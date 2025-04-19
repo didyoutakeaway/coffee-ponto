@@ -34,7 +34,7 @@ export function MainLayout() {
                 <span className="text-lg font-bold">Ponto Local</span>
               </div>
               <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SidebarTrigger>
