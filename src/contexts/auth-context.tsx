@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserSession, getUserByEmail, createSession, deleteSession, updateSessionActivity, getAllSessions, removeInactiveSessions } from '../services/db';
+import { User, UserSession, getUserByEmail, createSession, deleteSession, updateSessionActivity } from '../services/db';
 import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextProps {
@@ -20,78 +20,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Gerar um ID exclusivo para o dispositivo atual
-  const getDeviceId = () => {
-    let deviceId = localStorage.getItem('device_id');
-    if (!deviceId) {
-      deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      localStorage.setItem('device_id', deviceId);
-    }
-    return deviceId;
-  };
-
-  // Limpar sessões inativas periodicamente
   useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      removeInactiveSessions(24).catch(console.error); // Remove sessões inativas há mais de 24 horas
-    }, 60 * 60 * 1000); // A cada hora
-    
-    return () => clearInterval(cleanupInterval);
-  }, []);
-
-  useEffect(() => {
-    // Recuperar sessão do localStorage (não sessionStorage para persistir entre abas)
-    const storedSessionId = localStorage.getItem('currentSessionId');
-    if (storedSessionId) {
+    // Recuperar sessão do sessionStorage
+    const storedSession = sessionStorage.getItem('currentSession');
+    if (storedSession) {
       try {
-        // Carregar a sessão e usuário do IndexedDB em vez do localStorage
-        const deviceId = getDeviceId();
-        
-        getAllSessions()
-          .then(sessions => {
-            const currentSession = sessions.find(s => 
-              s.id === storedSessionId && s.deviceId === deviceId
-            );
-            
-            if (currentSession) {
-              setSession(currentSession);
-              // Atualizar atividade da sessão
-              updateSessionActivity(currentSession.id).catch(console.error);
-              
-              // Buscar usuário associado à sessão
-              getUserByEmail(currentSession.userEmail)
-                .then(foundUser => {
-                  if (foundUser) {
-                    setUser(foundUser);
-                  } else {
-                    // Se o usuário não for encontrado, limpar sessão
-                    localStorage.removeItem('currentSessionId');
-                    setSession(null);
-                  }
-                  setIsLoading(false);
-                })
-                .catch(err => {
-                  console.error('Erro ao buscar usuário:', err);
-                  setIsLoading(false);
-                });
-            } else {
-              // Sessão não encontrada ou inválida
-              localStorage.removeItem('currentSessionId');
-              setIsLoading(false);
-            }
-          })
-          .catch(err => {
-            console.error('Erro ao buscar sessões:', err);
-            setIsLoading(false);
-          });
+        const parsedSession = JSON.parse(storedSession);
+        setSession(parsedSession);
+        const storedUser = sessionStorage.getItem('currentUser');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+          // Atualizar atividade da sessão
+          updateSessionActivity(parsedSession.id).catch(console.error);
+        }
       } catch (error) {
         console.error('Erro ao recuperar sessão:', error);
-        localStorage.removeItem('currentSessionId');
-        setIsLoading(false);
+        sessionStorage.removeItem('currentSession');
+        sessionStorage.removeItem('currentUser');
       }
-    } else {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, []);
 
   // Atualizar atividade da sessão periodicamente
@@ -109,22 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const foundUser = await getUserByEmail(email);
       
       if (foundUser && foundUser.password === password) {
-        // Criar nova sessão com o deviceId atual
-        const deviceId = getDeviceId();
-        const newSession = await createSession({
-          id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          userId: foundUser.id,
-          userEmail: foundUser.email, // Adicionando email para facilitar recuperação
-          deviceId: deviceId,
-          lastActive: new Date(),
-          createdAt: new Date()
-        });
-        
+        // Criar nova sessão
+        const newSession = await createSession(foundUser.id);
         setUser(foundUser);
         setSession(newSession);
         
-        // Armazenar apenas o ID da sessão no localStorage
-        localStorage.setItem('currentSessionId', newSession.id);
+        // Armazenar na sessão
+        sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
+        sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         
         toast({
           title: "Login realizado com sucesso",
@@ -160,7 +100,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUser(null);
     setSession(null);
-    localStorage.removeItem('currentSessionId');
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentSession');
     toast({
       title: "Logout realizado",
       description: "Você saiu do sistema com sucesso.",
